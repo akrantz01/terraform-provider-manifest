@@ -138,3 +138,6 @@ fabric.properties
 
 # Ignore code-workspaces
 *.code-workspace
+
+### Project Files ###
+terraform-provider-manifest
