@@ -115,6 +115,9 @@ func (d *fetchDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 	model.ID = types.String{Value: url}
 	model.Manifests = manifestsState
+
+	diags = resp.State.Set(ctx, model)
+	resp.Diagnostics.Append(diags...)
 }
 
 func parseFilteredAttributes(ctx context.Context, raw types.List) [][]string {
