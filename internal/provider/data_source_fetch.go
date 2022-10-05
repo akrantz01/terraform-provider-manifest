@@ -85,6 +85,11 @@ func (d *fetchDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 	defer response.Body.Close()
 
+	if response.StatusCode != 200 {
+		resp.Diagnostics.AddError("Received non-success response code", fmt.Sprintf("Received non-success response code: %d", response.StatusCode))
+		return
+	}
+
 	// Attempt to decode regardless of the content type
 	filterableManifests := []map[any]any{}
 	if err := unmarshalAllManifests(response.Body, &filterableManifests); err != nil {
@@ -125,7 +130,7 @@ func parseFilteredAttributes(ctx context.Context, raw types.List) [][]string {
 
 	for _, rawAttribute := range raw.Elems {
 		var attribute string
-		tfsdk.ValueAs(ctx, rawAttribute, attribute)
+		tfsdk.ValueAs(ctx, rawAttribute, &attribute)
 
 		attributes = append(attributes, strings.Split(attribute, "."))
 	}
