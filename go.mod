@@ -2,7 +2,10 @@ module github.com/akrantz01/terraform-provider-manifest
 
 go 1.19
 
-require github.com/hashicorp/terraform-plugin-framework v0.14.0
+require (
+	github.com/hashicorp/terraform-plugin-framework v0.14.0
+	gopkg.in/yaml.v2 v2.4.0
+)
 
 require (
 	github.com/fatih/color v1.13.0 // indirect

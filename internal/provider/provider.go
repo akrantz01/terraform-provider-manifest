@@ -26,7 +26,9 @@ func (p *manifestProvider) Configure(context.Context, provider.ConfigureRequest,
 }
 
 func (p *manifestProvider) DataSources(context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewFetchDataSource,
+	}
 }
 
 func (p *manifestProvider) Resources(context.Context) []func() resource.Resource {
