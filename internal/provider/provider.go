@@ -11,11 +11,23 @@ import (
 )
 
 var _ provider.Provider = (*manifestProvider)(nil)
+var _ provider.ProviderWithMetadata = (*manifestProvider)(nil)
 
-type manifestProvider struct{}
+type manifestProvider struct {
+	version string
+}
 
-func New() provider.Provider {
-	return &manifestProvider{}
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &manifestProvider{
+			version: version,
+		}
+	}
+}
+
+func (p *manifestProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "manifest"
+	resp.Version = p.version
 }
 
 func (p *manifestProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {

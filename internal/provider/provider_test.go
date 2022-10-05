@@ -7,6 +7,6 @@ import (
 
 func providerFactories() map[string]func() (tfprotov6.ProviderServer, error) {
 	return map[string]func() (tfprotov6.ProviderServer, error){
-		"manifest": providerserver.NewProtocol6WithError(New()),
+		"manifest": providerserver.NewProtocol6WithError(New("test")()),
 	}
 }

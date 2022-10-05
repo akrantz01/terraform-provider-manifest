@@ -22,12 +22,13 @@ func NewFetchDataSource() datasource.DataSource {
 
 type fetchDataSource struct{}
 
-func (d *fetchDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "manifest_fetch"
+func (d *fetchDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_fetch"
 }
 
 func (d *fetchDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
+		MarkdownDescription: "Fetches and optionally removes attributes from the retrieved manifest(s). The server must return with a 200 status code.",
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
 				Description: "The URL used for the request.",
