@@ -86,6 +86,23 @@ func TestDataSource_MultipleDocuments_Filtered(t *testing.T) {
 	})
 }
 
+func TestDataSource_OnlyResources(t *testing.T) {
+	server := setupMockServer()
+	defer server.Close()
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(onlyResourcesStatement, server.URL, "multiple"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.manifest_fetch.test", "manifests.#", "1"),
+					resource.TestCheckResourceAttr("data.manifest_fetch.test", "manifests.0", multipleDocument1)),
+			},
+		},
+	})
+}
+
 func TestDataSource_Failure(t *testing.T) {
 	server := setupMockServer()
 	defer server.Close()
@@ -162,3 +179,12 @@ data "manifest_fetch" "test" {
 		"metadata.creationTimestamp",
 	]
 }`
+
+const onlyResourcesStatement = `
+data "manifest_fetch" "test" {
+	url = "%s/%s"
+	only_resources = [
+		"testing.k8s.io/v1/Test"
+	]
+}
+`

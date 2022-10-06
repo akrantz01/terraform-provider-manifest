@@ -47,6 +47,13 @@ func (d *fetchDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				},
 				Optional: true,
 			},
+			"only_resources": {
+				Description: "Only return the specified resource types. The resources must be in the format `{apiVersion}/{kind}`.",
+				Type: types.ListType{
+					ElemType: types.StringType,
+				},
+				Optional: true,
+			},
 			"manifests": {
 				Description: "The resulting manifests to be applied. Due to a limitation the Terraform Plugin Framework, these must be parsed with `yamldecode` prior to being passed to `kubernetes_manifest`.",
 				// TODO: update to `types.Dynamic` pending hashicorp/terraform-plugin-framework#147
@@ -69,7 +76,13 @@ func (d *fetchDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	url := model.URL.Value
-	filteredAttributes := parseFilteredAttributes(ctx, model.FilteredAttributes)
+	filteredAttributes := parseTfList(ctx, model.FilteredAttributes, func(attribute string) []string {
+		return strings.Split(attribute, ".")
+	})
+	onlyResources := parseTfList(ctx, model.OnlyResources, func(resource string) string { return resource })
+	if len(onlyResources) == 0 {
+		onlyResources = nil
+	}
 
 	client := &http.Client{}
 
@@ -93,7 +106,7 @@ func (d *fetchDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 	// Attempt to decode regardless of the content type
 	filterableManifests := []map[any]any{}
-	if err := unmarshalAllManifests(response.Body, &filterableManifests); err != nil {
+	if err := unmarshalAllManifests(response.Body, onlyResources, &filterableManifests); err != nil {
 		resp.Diagnostics.AddError("Error parsing response body", fmt.Sprintf("Error parsing response body: %s", err))
 		return
 	}
@@ -126,21 +139,31 @@ func (d *fetchDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	resp.Diagnostics.Append(diags...)
 }
 
-func parseFilteredAttributes(ctx context.Context, raw types.List) [][]string {
-	var attributes [][]string
+func parseTfList[T any](ctx context.Context, raw types.List, parser func(string) T) []T {
+	var parsed []T
 
-	for _, rawAttribute := range raw.Elems {
-		var attribute string
-		tfsdk.ValueAs(ctx, rawAttribute, &attribute)
+	for _, rawElement := range raw.Elems {
+		var element string
+		tfsdk.ValueAs(ctx, rawElement, &element)
 
-		attributes = append(attributes, strings.Split(attribute, "."))
+		parsed = append(parsed, parser(element))
 	}
 
-	return attributes
+	return parsed
+}
+
+func contains[T comparable](arr []T, needle T) bool {
+	for _, element := range arr {
+		if element == needle {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Unmarshals all manifests in the response
-func unmarshalAllManifests(reader io.Reader, manifests *[]map[any]any) error {
+func unmarshalAllManifests(reader io.Reader, allowedResources []string, manifests *[]map[any]any) error {
 	decoder := yaml.NewDecoder(reader)
 	decoder.SetStrict(true)
 
@@ -154,7 +177,9 @@ func unmarshalAllManifests(reader io.Reader, manifests *[]map[any]any) error {
 			break
 		}
 
-		*manifests = append(*manifests, manifest)
+		if allowedResources == nil || contains(allowedResources, fmt.Sprintf("%s/%s", manifest["apiVersion"], manifest["kind"])) {
+			*manifests = append(*manifests, manifest)
+		}
 	}
 
 	return nil
@@ -175,5 +200,6 @@ type modelV0 struct {
 	ID                 types.String `tfsdk:"id"`
 	URL                types.String `tfsdk:"url"`
 	FilteredAttributes types.List   `tfsdk:"filtered_attributes"`
+	OnlyResources      types.List   `tfsdk:"only_resources"`
 	Manifests          types.List   `tfsdk:"manifests"`
 }
